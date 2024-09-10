@@ -5,7 +5,7 @@
 
 ## Criando um Sistema Bancário com Python
 
-### Este repositório contém o desafio prodposto no bootcamp de Engenharia de Dados, para a criação de um sistema bancário utilizando a liguagem Python.
+### Este repositório contém o desafio proposto no bootcamp de Engenharia de Dados, para a criação de um sistema bancário utilizando a liguagem Python.
 
 ## Objetivo Geral do desafio: 
 ### Criar um sistema bancário com as operações: sacar, depositar e visualizar extrato.
