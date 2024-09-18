@@ -25,3 +25,13 @@
 ### Os valores devem ser exibidos utilizado o formato R$ xxx.xx,
 Exemplo: 1500.45 = R$ 1500.45
 
+
+# Update realizado em 17/09/2024, conforme solicitado na parte 2 do desafio:
+
+## Objetivo:
+### Implmentar as funcionalidades:
+#### - Criação de Usuário.
+#### - Criação de Conta corrente.
+#### - Limitar em até 10 transações diárias por usuário.
+#### - Ao realizar qualquer transação, solicitar o número da conta do usuário cadastrado.
+#### - Criar log de relatório das movimentações geradas com as informações de número de conta, usuário, transações realizadas, data e horário das transações.
