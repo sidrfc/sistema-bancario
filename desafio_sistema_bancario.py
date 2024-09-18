@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Decorador para log
 def log_operation(func):
@@ -54,9 +54,30 @@ class Conta:
 class Banco:
     def __init__(self):
         self.contas = []
+        self.usuarios = []
+        self.numero_conta = 1  # Inicia com o número da conta 1
 
-    def add_conta(self, conta):
+    def add_conta(self, usuario):
+        conta = Conta(self.numero_conta, 0)  # Inicialmente com saldo 0
+        conta.numero_agencia = "0001"  # Número da agência fixo
+        conta.usuario = usuario
+        self.numero_conta += 1
         self.contas.append(conta)
+        return conta
+
+    def add_usuario(self, nome, data_nascimento, cpf, endereco):
+        # Verifica se o CPF já está cadastrado
+        if any(u['cpf'] == cpf for u in self.usuarios):
+            return "Operação falhou! CPF já cadastrado."
+        
+        usuario = {
+            'nome': nome,
+            'data_nascimento': data_nascimento,
+            'cpf': cpf,
+            'endereco': endereco
+        }
+        self.usuarios.append(usuario)
+        return "Usuário cadastrado com sucesso!"
 
     def __iter__(self):
         return ContaIterador(self.contas)
@@ -73,7 +94,7 @@ class ContaIterador:
         if self.index < len(self.contas):
             conta = self.contas[self.index]
             self.index += 1
-            return f"Conta nº {conta.numero} - Saldo: R$ {conta.saldo:.2f}"
+            return f"Conta nº {conta.numero} - Agência: {conta.numero_agencia} - Saldo: R$ {conta.saldo:.2f} - Cliente: {conta.usuario['nome']}"
         else:
             raise StopIteration
 
@@ -126,35 +147,63 @@ numero_saques = 0
 LIMITE_SAQUES = 3
 LIMITE_TRANSACOES_DIA = 10
 
-# Instanciação do banco e contas
+# Instanciação do banco
 banco = Banco()
-conta1 = Conta(1, 1000)
-conta2 = Conta(2, 1500)
-banco.add_conta(conta1)
-banco.add_conta(conta2)
 
+# Menu para criar usuários e contas
 menu = """
-[1] Depositar
-[2] Sacar
-[3] Extrato
-[4] Relatório de Contas
-[5] Sair
+[1] Criar Usuário
+[2] Criar Conta Corrente
+[3] Depositar
+[4] Sacar
+[5] Extrato
+[6] Relatório de Contas
+[7] Sair
 """
 
 while True:
     opcao = input(menu).strip()
 
     if opcao == "1":
-        valor = float(input("Informe o valor de depósito: R$ "))
-        saldo, extrato, mensagem = depositar(valor, saldo, extrato, conta1.get_transacoes(), LIMITE_TRANSACOES_DIA)
-        print(mensagem)
+        nome = input("Nome do usuário: ")
+        data_nascimento = input("Data de nascimento (dd/mm/yyyy): ")
+        cpf = input("CPF (somente números): ")
+        endereco = input("Endereço (logradouro, número - bairro - cidade/sigla estado): ")
+        resultado = banco.add_usuario(nome, data_nascimento, cpf, endereco)
+        print(resultado)
 
     elif opcao == "2":
-        valor = float(input("Informe o valor para saque: R$ "))
-        saldo, extrato, mensagem = sacar(valor, saldo, extrato, conta1.get_transacoes(), numero_saques, LIMITE_SAQUES, LIMITE_TRANSACOES_DIA)
-        print(mensagem)
+        cpf = input("Informe o CPF do usuário para criar a conta: ")
+        usuario = next((u for u in banco.usuarios if u['cpf'] == cpf), None)
+        if usuario:
+            conta = banco.add_conta(usuario)
+            print(f"Conta criada com sucesso! Número da conta: {conta.numero}")
+        else:
+            print("Usuário não encontrado.")
 
     elif opcao == "3":
+        numero_conta = int(input("Informe o número da conta: "))
+        valor = float(input("Informe o valor de depósito: R$ "))
+        conta = next((c for c in banco.contas if c.numero == numero_conta), None)
+        if conta:
+            saldo, extrato, mensagem = depositar(valor, conta.saldo, extrato, conta.get_transacoes(), LIMITE_TRANSACOES_DIA)
+            conta.saldo = saldo
+            print(mensagem)
+        else:
+            print("Conta não encontrada.")
+
+    elif opcao == "4":
+        numero_conta = int(input("Informe o número da conta: "))
+        valor = float(input("Informe o valor para saque: R$ "))
+        conta = next((c for c in banco.contas if c.numero == numero_conta), None)
+        if conta:
+            saldo, extrato, mensagem = sacar(valor, conta.saldo, extrato, conta.get_transacoes(), numero_saques, LIMITE_SAQUES, LIMITE_TRANSACOES_DIA)
+            conta.saldo = saldo
+            print(mensagem)
+        else:
+            print("Conta não encontrada.")
+
+    elif opcao == "5":
         print("\n========== EXTRATO DA CONTA ==========\n")
         print("Movimentações realizadas em sua conta:\n")
         for line in ReportGenerator(extrato):
@@ -162,13 +211,13 @@ while True:
         print(f"\nSaldo Atual: R$ {saldo:.2f}")
         print("=========================================")
 
-    elif opcao == "4":
+    elif opcao == "6":
         print("\n========== RELATÓRIO DE CONTAS ==========\n")
         for info in banco:
             print(info)
         print("=========================================")
 
-    elif opcao == "5":
+    elif opcao == "7":
         print("Obrigado por utilizar os nossos serviços!")
         break
 
