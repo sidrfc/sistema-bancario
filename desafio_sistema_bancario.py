@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Decorador para log
 def log_operation(func):
@@ -12,10 +12,71 @@ def log_operation(func):
         return result
     return wrapper
 
+class Transacao:
+    def __init__(self, tipo, valor):
+        self.tipo = tipo
+        self.valor = valor
+        self.data = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+class Conta:
+    def __init__(self, numero, usuario):
+        self.numero = numero
+        self.saldo = 0
+        self.transacoes = []
+        self.usuario = usuario
+
+    def adicionar_transacao(self, tipo, valor):
+        transacao = Transacao(tipo, valor)
+        self.transacoes.append(transacao)
+
+    def depositar(self, valor):
+        if valor > 0:
+            self.saldo += valor
+            self.adicionar_transacao('Depósito', valor)
+            return "Depósito efetuado com sucesso!"
+        return "Operação falhou! O valor informado é inválido."
+
+    def sacar(self, valor):
+        if valor > self.saldo:
+            return "Operação falhou! Você não tem saldo suficiente."
+        self.saldo -= valor
+        self.adicionar_transacao('Saque', valor)
+        return "Saque realizado com sucesso!"
+
+class Usuario:
+    def __init__(self, nome, data_nascimento, cpf, endereco):
+        self.nome = nome
+        self.data_nascimento = data_nascimento
+        self.cpf = cpf
+        self.endereco = endereco
+
+class Banco:
+    def __init__(self):
+        self.contas = []
+        self.usuarios = []
+        self.numero_conta = 1  # Inicia com o número da conta 1
+
+    def add_usuario(self, nome, data_nascimento, cpf, endereco):
+        if any(u.cpf == cpf for u in self.usuarios):
+            return "Operação falhou! CPF já cadastrado."
+        
+        usuario = Usuario(nome, data_nascimento, cpf, endereco)
+        self.usuarios.append(usuario)
+        return "Usuário cadastrado com sucesso!"
+
+    def add_conta(self, usuario):
+        conta = Conta(self.numero_conta, usuario)
+        self.numero_conta += 1
+        self.contas.append(conta)
+        return conta
+
+    def __iter__(self):
+        return iter(self.contas)
+
 # Gerador de relatórios
 class ReportGenerator:
     def __init__(self, extrato):
-        self.extrato = extrato.split('\n')
+        self.extrato = extrato
         self.index = 0
 
     def __iter__(self):
@@ -29,122 +90,15 @@ class ReportGenerator:
         else:
             raise StopIteration
 
-    def filter_by_type(self, trans_type):
-        for line in self.extrato:
-            if line.startswith(trans_type):
-                yield line
-
-# Iterador personalizado para contas
-class Conta:
-    def __init__(self, numero, saldo):
-        self.numero = numero
-        self.saldo = saldo
-        self.transacoes = []  # Armazenar transações
-
-    def adicionar_transacao(self, tipo, valor):
-        self.transacoes.append({
-            'tipo': tipo,
-            'valor': valor,
-            'data': datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        })
-
-    def get_transacoes(self):
-        return self.transacoes
-
-class Banco:
-    def __init__(self):
-        self.contas = []
-        self.usuarios = []
-        self.numero_conta = 1  # Inicia com o número da conta 1
-
-    def add_conta(self, usuario):
-        conta = Conta(self.numero_conta, 0)  # Inicialmente com saldo 0
-        conta.numero_agencia = "0001"  # Número da agência fixo
-        conta.usuario = usuario
-        self.numero_conta += 1
-        self.contas.append(conta)
-        return conta
-
-    def add_usuario(self, nome, data_nascimento, cpf, endereco):
-        # Verifica se o CPF já está cadastrado
-        if any(u['cpf'] == cpf for u in self.usuarios):
-            return "Operação falhou! CPF já cadastrado."
-        
-        usuario = {
-            'nome': nome,
-            'data_nascimento': data_nascimento,
-            'cpf': cpf,
-            'endereco': endereco
-        }
-        self.usuarios.append(usuario)
-        return "Usuário cadastrado com sucesso!"
-
-    def __iter__(self):
-        return ContaIterador(self.contas)
-
-class ContaIterador:
-    def __init__(self, contas):
-        self.contas = contas
-        self.index = 0
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.index < len(self.contas):
-            conta = self.contas[self.index]
-            self.index += 1
-            return f"Conta nº {conta.numero} - Agência: {conta.numero_agencia} - Saldo: R$ {conta.saldo:.2f} - Cliente: {conta.usuario['nome']}"
-        else:
-            raise StopIteration
+@log_operation
+def depositar(valor, conta):
+    return conta.depositar(valor)
 
 @log_operation
-def depositar(valor, saldo, extrato, transacoes, limite_transacoes):
-    data_atual = datetime.now().strftime("%d/%m/%Y")
-    transacoes_dia = [t for t in transacoes if t['data'].startswith(data_atual)]
-    
-    if len(transacoes_dia) >= limite_transacoes:
-        return saldo, extrato, "Operação falhou! Você excedeu o número de transações permitidas para hoje."
-
-    if valor > 0:
-        saldo += valor
-        data = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        extrato += f"Depósito: R$ {valor:.2f} | Data e Hora: {data}\n"
-        transacoes.append({'tipo': 'Depósito', 'valor': valor, 'data': data})
-        return saldo, extrato, "Depósito efetuado com sucesso!"
-    else:
-        return saldo, extrato, "Operação falhou! O valor informado é inválido."
-
-@log_operation
-def sacar(valor, saldo, extrato, transacoes, numero_saques, LIMITE_SAQUES, limite_transacoes):
-    data_atual = datetime.now().strftime("%d/%m/%Y")
-    transacoes_dia = [t for t in transacoes if t['data'].startswith(data_atual)]
-    
-    if len(transacoes_dia) >= limite_transacoes:
-        return saldo, extrato, "Operação falhou! Você excedeu o número de transações permitidas para hoje."
-
-    excedeu_saldo = valor > saldo
-    excedeu_saques = numero_saques >= LIMITE_SAQUES
-
-    if excedeu_saldo:
-        return saldo, extrato, "Operação falhou! Você não tem saldo suficiente."
-    elif excedeu_saques:
-        return saldo, extrato, "Operação falhou! Número máximo de saques excedido."
-    elif valor > 0:
-        saldo -= valor
-        data = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        extrato += f"Saque: R$ {valor:.2f} | Data e Hora: {data}\n"
-        transacoes.append({'tipo': 'Saque', 'valor': valor, 'data': data})
-        numero_saques += 1
-        return saldo, extrato, "Saque realizado com sucesso!"
-    else:
-        return saldo, extrato, "Operação falhou! O valor informado é inválido."
+def sacar(valor, conta):
+    return conta.sacar(valor)
 
 # Configurações iniciais
-saldo = 0
-extrato = ""
-numero_saques = 0
-LIMITE_SAQUES = 3
 LIMITE_TRANSACOES_DIA = 10
 
 # Instanciação do banco
@@ -174,7 +128,7 @@ while True:
 
     elif opcao == "2":
         cpf = input("Informe o CPF do usuário para criar a conta: ")
-        usuario = next((u for u in banco.usuarios if u['cpf'] == cpf), None)
+        usuario = next((u for u in banco.usuarios if u.cpf == cpf), None)
         if usuario:
             conta = banco.add_conta(usuario)
             print(f"Conta criada com sucesso! Número da conta: {conta.numero}")
@@ -186,8 +140,7 @@ while True:
         valor = float(input("Informe o valor de depósito: R$ "))
         conta = next((c for c in banco.contas if c.numero == numero_conta), None)
         if conta:
-            saldo, extrato, mensagem = depositar(valor, conta.saldo, extrato, conta.get_transacoes(), LIMITE_TRANSACOES_DIA)
-            conta.saldo = saldo
+            mensagem = depositar(valor, conta)
             print(mensagem)
         else:
             print("Conta não encontrada.")
@@ -197,24 +150,27 @@ while True:
         valor = float(input("Informe o valor para saque: R$ "))
         conta = next((c for c in banco.contas if c.numero == numero_conta), None)
         if conta:
-            saldo, extrato, mensagem = sacar(valor, conta.saldo, extrato, conta.get_transacoes(), numero_saques, LIMITE_SAQUES, LIMITE_TRANSACOES_DIA)
-            conta.saldo = saldo
+            mensagem = sacar(valor, conta)
             print(mensagem)
         else:
             print("Conta não encontrada.")
 
     elif opcao == "5":
-        print("\n========== EXTRATO DA CONTA ==========\n")
-        print("Movimentações realizadas em sua conta:\n")
-        for line in ReportGenerator(extrato):
-            print(line)
-        print(f"\nSaldo Atual: R$ {saldo:.2f}")
-        print("=========================================")
+        numero_conta = int(input("Informe o número da conta: "))
+        conta = next((c for c in banco.contas if c.numero == numero_conta), None)
+        if conta:
+            print("\n========== EXTRATO DA CONTA ==========\n")
+            for transacao in conta.transacoes:
+                print(f"{transacao.tipo}: R$ {transacao.valor:.2f} | Data e Hora: {transacao.data}")
+            print(f"\nSaldo Atual: R$ {conta.saldo:.2f}")
+            print("=========================================")
+        else:
+            print("Conta não encontrada.")
 
     elif opcao == "6":
         print("\n========== RELATÓRIO DE CONTAS ==========\n")
-        for info in banco:
-            print(info)
+        for conta in banco:
+            print(f"Conta nº {conta.numero} - Saldo: R$ {conta.saldo:.2f} - Cliente: {conta.usuario.nome}")
         print("=========================================")
 
     elif opcao == "7":
